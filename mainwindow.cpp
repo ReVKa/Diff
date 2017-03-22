@@ -5,6 +5,8 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QTimer>
+#include <QStringList>
+
 
 #define OPTIMIZE
 
@@ -15,13 +17,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     setCentralWidget(ui->widget);
+#ifndef NEWQCP
     curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
-    curve->setPen(QPen(Qt::darkGreen, 3, Qt::SolidLine));
+    curve->setPen(QPen(Qt::darkGreen, 1, Qt::SolidLine));
     ui->widget->addPlottable(curve);
+#endif
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(on_timer_event()));
-
 }
 
 MainWindow::~MainWindow()
@@ -31,22 +34,24 @@ MainWindow::~MainWindow()
 void MainWindow::on_actionNew_triggered()
 {
     Dialog *wnd = new Dialog(this);
-    QObject::connect(wnd,SIGNAL(OnOkClicked(QString, QString, double, double, double, double, QString , int)),\
-                     this, SLOT(on_pushButton_clicked(QString, QString, double, double, double, double, QString , int)));
+    QObject::connect(wnd,SIGNAL(OnOkClicked(QString,QString,double,double,double,double,QString,QString,bool,double,int)),\
+                     this, SLOT(on_pushButton_clicked(QString,QString,double,double,double,double,QString,QString,bool,double,int)));
     wnd->show();
 }
 
 #define TYPE_X 0
 #define TYPE_Y 1
 
-double get_function( int type,double x, double y)
+double get_function( IterCore* core, int type,double x, double y)
 {
     switch (type)
     {
     //case TYPE_X: return x;//((double)(x+y+0.4*x-0.4*pow(x,3)));
     //case TYPE_Y: return x;//((double)y+0.4*x-0.4*pow(x,3));
-    case TYPE_X: return ((double)(x+y+0.4*x-0.4*pow(x,3)));
-    case TYPE_Y: return ((double)y+0.4*x-0.4*pow(x,3));
+    //case TYPE_X: return ((double)(x+y+0.4*x-0.4*pow(x,3)));
+    //case TYPE_Y: return ((double)y+0.4*x-0.4*pow(x,3));
+        case TYPE_X:    return core->get_function_value(FUNCTIONS_F,x,y);
+        case TYPE_Y:    return core->get_function_value(FUNCTIONS_G,x,y);
     }
 
     return -1;
@@ -72,15 +77,15 @@ void add_to_image(double x,double y,\
     _x.push_back(x);
     _y.push_back(y);
 }
-void MainWindow::iteract(double a, double b, double c, double d, QVector<double> &x, QVector<double> &y, int DEBUG)
+void MainWindow::iteract(IterCore* core,double a, double b, double c, double d, QVector<double> &x, QVector<double> &y, int DEBUG)
 {
     double start_x = a, start_y = b, end_x = c, end_y = d;
 
-    double a_x = get_function(TYPE_X, start_x, start_y);
-    double a_y = get_function(TYPE_Y, start_x, start_y);
+    double a_x = get_function(core, TYPE_X, start_x, start_y);
+    double a_y = get_function(core, TYPE_Y, start_x, start_y);
 
-    double b_x = get_function(TYPE_X, end_x, end_y);
-    double b_y = get_function(TYPE_Y, end_x, end_y);
+    double b_x = get_function(core, TYPE_X, end_x, end_y);
+    double b_y = get_function(core, TYPE_Y, end_x, end_y);
 
     double dl = get_dl(a_x, a_y, b_x, b_y);
     add_to_image( a_x, a_y, range_min[0],range_min[1],range_max[0], range_max[1], x, y);
@@ -92,7 +97,7 @@ void MainWindow::iteract(double a, double b, double c, double d, QVector<double>
     double h_y = 0.0;
 
     double t_x, t_y;
-    QVector<double> vec;
+    //QVector<double> vec;
 
     while( dl > h) // пока длина больше H
     {
@@ -103,8 +108,8 @@ void MainWindow::iteract(double a, double b, double c, double d, QVector<double>
 
             t_x = get_midl(start_x, t_x); // Получаем середину
             t_y = get_midl(start_y, t_y);// Получаем середину
-            h_x = get_function(TYPE_X,t_x, t_y);// Отображаем середину
-            h_y = get_function(TYPE_Y,t_x, t_y); // Отображаем середину
+            h_x = get_function(core, TYPE_X,t_x, t_y);// Отображаем середину
+            h_y = get_function(core, TYPE_Y,t_x, t_y); // Отображаем середину
             dl = get_dl(c_x, c_y, h_x, h_y);// Получаем длина между серединой и отображением A
         }
         // Длина меньше H, рисуем точку
@@ -128,6 +133,11 @@ void MainWindow::iteract(double a, double b, double c, double d, QVector<double>
 void MainWindow::on_timer_event()
 {
     int len = x.length();
+
+#ifdef NEWQCP
+    int qcpLen = mycurve.size();
+#endif
+
     for(int i = pre_pos; i<curr_pos+1; i++)
     {
         if(i>=len)
@@ -135,8 +145,11 @@ void MainWindow::on_timer_event()
             timer->stop();
             break;
         }
-
+#ifndef NEWQCP
         curve->addData(x[i], y[i]);
+#else
+        mycurve.at(qcpLen-1)->addData(x[i], y[i]);
+#endif
     }
     ui->widget->replot();
 
@@ -144,20 +157,19 @@ void MainWindow::on_timer_event()
     curr_pos+=x.length()/10;
 }
 
-void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double max,\
-                                       double b_min, double b_max, QString constText,int num)
+void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
+                                       QString color, bool dynamic, double _h,int num)
 {
+#ifndef NEWQCP
      curve->clearData();
-
-     h = 0.1;
+#endif
+     h = _h;
 
      QTime *time = new QTime();
 
      double a = min;
      double b =  max;
 
-
-     qDebug() << a << " " << b << " ";
      x.clear();
      y.clear();
      _x.clear();
@@ -168,19 +180,20 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
      range_max[0] = b_max;
      range_max[1] = b_max;
 
-    // qDebug() << "Debug1";
-     //IterCore core( this, h, f, g, constText);
+     IterCore* core = new IterCore( this, h, f, g, constText);
 
-     if(num == -1)
+     if( core->isError() )
      {
+         QString err_str = core->get_error_string();
+
+         QMessageBox::warning(this, "Error", err_str);
          return;
      }
-    // double val = core.get_value_f(1,2);
 
      time->start();
      iter_count = 0;
 
-     iteract(a,a,b,b,x,y, 0);
+     iteract(core,a,a,b,b,x,y, 0);
 
      int count = 0;// Счетчик итераций;
      int len = 0;
@@ -202,21 +215,21 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
              start = i;
 
 #ifdef OPTIMIZE
-             value[TYPE_X] = get_function(TYPE_X, x[i], y[i]);
-             value[TYPE_Y] = get_function(TYPE_Y, x[i], y[i]);
+             value[TYPE_X] = get_function(core, TYPE_X, x[i], y[i]);
+             value[TYPE_Y] = get_function(core, TYPE_Y, x[i], y[i]);
              while(i < len - 1)
              {
 #endif
                  i++;
 #ifdef OPTIMIZE
-                 _value[TYPE_X] = get_function(TYPE_X, x[i], y[i]);
-                 _value[TYPE_Y] = get_function(TYPE_Y, x[i], y[i]);
+                 _value[TYPE_X] = get_function(core, TYPE_X, x[i], y[i]);
+                 _value[TYPE_Y] = get_function(core, TYPE_Y, x[i], y[i]);
 
                  if( get_dl(value[0], value[1], _value[0], _value[1]) >= h || abs(x[start] - x[i]) >= h/2 || abs(y[start] - y[i]) >= h/2)
                      break;
              }
 #endif
-             iteract(x.at(start),y.at(start),x.at(i),y.at(i),_x,_y, 0);// делаем итерацию для двух точек, поэтому нам нужно 4 координаты и записываем это в массив pts2
+             iteract(core,x.at(start),y.at(start),x.at(i),y.at(i),_x,_y, 0);// делаем итерацию для двух точек, поэтому нам нужно 4 координаты и записываем это в массив pts2
          }
          x = _x;
          y = _y;
@@ -227,11 +240,32 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
          qApp->processEvents();
      }
       progress.cancel();
-    // curve->setData(x,y);
 
-     curr_pos = 0;
-     pre_pos = 0;
-     timer->start(100);
+      Color rgb[3];
+      get_color_fstring(color, rgb);
+
+      QColor colors(rgb[0],rgb[1],rgb[2]);
+      QPen pen(colors);
+#ifdef NEWQCP
+      QCPCurve *curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
+      curve->setPen(pen);
+      ui->widget->addPlottable(curve);
+
+      mycurve.push_back(curve);
+
+#else
+      curve->setPen(pen);
+#endif
+      if( dynamic )
+      {
+        curr_pos = 0;
+        pre_pos = 0;
+        timer->start(100);
+      }
+      else
+        curve->setData(x,y);
+
+
      //Подписываем оси Ox и Oy
      ui->widget->xAxis->setLabel("x");
      ui->widget->yAxis->setLabel("y");
@@ -249,11 +283,41 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
              +"\nКоличество операций:"+QString::number(iter_count);
 
      QMessageBox::information(this,tr("Результаты"), str);
+
+
 }
 
 void MainWindow::on_actionClear_Grapg_triggered()
 {
     timer->stop();
+#ifdef NEWQCP
+    for(int i = 0; i<mycurve.size(); i++)
+    {
+        mycurve.at(i)->clearData();
+        ui->widget->removePlottable(mycurve.at(i));
+    }
+    mycurve.clear();
+#else
     curve->clearData();
+#endif
     ui->widget->replot();
+}
+void MainWindow::get_color_fstring(QString color, Color rgb[3])
+{
+    color.replace("x", " ");
+
+    QStringList list;
+
+    list = color.split(' ');
+
+    int i = 0;
+    foreach(QString str, list)
+    {
+        if( i>= 3)
+            break;
+
+        rgb[i] = str.toInt();
+        i++;
+    }
+
 }

@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include <QApplication>
 
+#include "itercore.h"
 
 #include <QSplashScreen>
 #include <QTime>
