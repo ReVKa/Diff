@@ -3,6 +3,9 @@ IterCore::IterCore(QObject *parent,double step, QString _f, QString _g, QString 
 {
     error = ERROR_NO;
 
+    function[0] = _f;
+    function[1] = _g;
+    Consts = constText;
     h = step;
 
     QVector<QString> list = parseConst(constText);
@@ -123,4 +126,11 @@ QString IterCore::get_error_string()
 bool IterCore::isError()
 {
     return error;
+}
+QString IterCore::get_function(int func_id)
+{
+    if(func_id == 3)
+        return Consts;
+
+    return function[func_id];
 }

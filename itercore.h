@@ -35,6 +35,8 @@ public:
     double get_function_value(FUNCTIONS function,double x, double y);
 
     QString get_error_string();
+    QString get_function( int func_id );
+
     bool isError();
 
 private:
@@ -51,6 +53,9 @@ private:
 
     QString replace_extension(QString _f);
     QVector<QString> parseConst(QString constText);
+
+    QString function[2];
+    QString Consts;
 };
 
 #endif // ITERCORE_H

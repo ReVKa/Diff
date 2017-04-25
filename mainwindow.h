@@ -28,6 +28,7 @@ struct Vectors
     int num;
     int rgb[3];
     QAction * action;
+    int curve;
 };
 
 namespace Ui {
@@ -48,12 +49,15 @@ public slots:
     void on_timer_event();
 
     void on_actionClear_Grapg_triggered();
+    void SaveProgress (QString filename);
 
     void get_color_fstring(QString color, Color rgb[3]);
 
 private slots:
     void on_actionSave_triggered();
     void on_actionIteration_triggered();
+    void on_actionCombine_triggered();
+    void on_actionOpen_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -73,9 +77,13 @@ private:
     int iter_count;
 
     double h;
+    bool work = false;
 
     void iteract(IterCore *core, double a, double b, double c, double d, QVector<double> &x, QVector<double> &y, int DEBUG);
     double get_dl( double fx, double fy, double gx, double gy);
+
+    void PlotGraph(int this_curve, int rgb[], bool dynamic, QVector<double> x, QVector<double> y);
+    void TakeIteration(IterCore * core, double min, double max, double b_min, double b_max, double _h, QVector<double> &x, QVector<double> &y, int step, int finish);
 };
 
 #endif // MAINWINDOW_H

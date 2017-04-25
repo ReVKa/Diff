@@ -7,9 +7,12 @@
 #include <QTimer>
 #include <QFile>
 #include <QFileDialog>
+#include <QByteArray>
 #include <QAction>
 
 #define OPTIMIZE
+#define clamp(a, b, c) a= a>b? b : a< c ? c : a
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -28,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(timer, SIGNAL(timeout()), this, SLOT(on_timer_event()));
 
     ui->menuEdit->addAction("Iteration",this, SLOT(on_actionIteration_triggered()));
+    ui->menuEdit->addAction("Combine",this, SLOT(on_actionCombine_triggered()));
     ui->menuEdit->addSeparator();
 
     curr_vector = -1;
@@ -149,6 +153,7 @@ void MainWindow::on_timer_event()
         if(i>=len)
         {
             timer->stop();
+            work = false;
             break;
         }
 #ifndef NEWQCP
@@ -166,26 +171,14 @@ void MainWindow::on_timer_event()
 void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
                                        QString color, bool dynamic, double _h,int num)
 {
+
+    while (work)
+        qApp->processEvents();
+
+    work = true;
 #ifndef NEWQCP
      curve->clearData();
 #endif
-     h = _h;
-
-     QTime *time = new QTime();
-
-     double a = min;
-     double b =  max;
-
-     x.clear();
-     y.clear();
-     _x.clear();
-     _y.clear();
-
-     range_min[0] = b_min;
-     range_min[1] = b_min;
-     range_max[0] = b_max;
-     range_max[1] = b_max;
-
      IterCore* core = new IterCore( this, h, f, g, constText);
 
      if( core->isError() )
@@ -196,105 +189,24 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
          return;
      }
 
-     time->start();
-     iter_count = 0;
-
-     iteract(core,a,a,b,b,x,y, 0);
-
-     int count = 0;// Счетчик итераций;
-     int len = 0;
-     QProgressDialog progress(tr("Процесс создания графика"), tr("Отмена"), 0, num, this);
-     progress.setModal(true);
-     progress.setFixedSize(250, 125);
-     progress.show();
-
-     int start = 0;
-     int value[2];
-
-     int _value[2];
-     while (++count < num)
-     {
-         len = x.size();
-         //start = 0;
-         for(int i = 0; i<len-1;)
-         {
-             start = i;
-
-#ifdef OPTIMIZE
-             value[TYPE_X] = get_function(core, TYPE_X, x[i], y[i]);
-             value[TYPE_Y] = get_function(core, TYPE_Y, x[i], y[i]);
-             while(i < len - 1)
-             {
-#endif
-                 i++;
-#ifdef OPTIMIZE
-                 _value[TYPE_X] = get_function(core, TYPE_X, x[i], y[i]);
-                 _value[TYPE_Y] = get_function(core, TYPE_Y, x[i], y[i]);
-
-                 if( get_dl(value[0], value[1], _value[0], _value[1]) >= h || abs(x[start] - x[i]) >= h/2 || abs(y[start] - y[i]) >= h/2)
-                     break;
-             }
-#endif
-             iteract(core,x.at(start),y.at(start),x.at(i),y.at(i),_x,_y, 0);// делаем итерацию для двух точек, поэтому нам нужно 4 координаты и записываем это в массив pts2
-         }
-         x = _x;
-         y = _y;
-
-         _x.clear();
-         _y.clear();
-         progress.setValue(count);
-         qApp->processEvents();
-     }
-      progress.cancel();
+     TakeIteration(core, min, max, b_min, b_max, _h, x, y, 0, num);
 
       Color rgb[3];
       get_color_fstring(color, rgb);
 
-      QColor colors(rgb[0],rgb[1],rgb[2]);
-      QPen pen(colors);
-#ifdef NEWQCP
       QCPCurve *curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
-      curve->setPen(pen);
       ui->widget->addPlottable(curve);
 
       mycurve.push_back(curve);
 
-#else
-      curve->setPen(pen);
-#endif
-      if( dynamic )
-      {
-        curr_pos = 0;
-        pre_pos = 0;
-        timer->start(100);
-      }
-      else
-        curve->setData(x,y);
-
-
-     //Подписываем оси Ox и Oy
-     ui->widget->xAxis->setLabel("x");
-     ui->widget->yAxis->setLabel("y");
-
-     ui->widget->axisRect()->setupFullAxesBox();
-
-     //Установим область, которая будет показываться на графике
-     ui->widget->xAxis->setRange(range_min[0], range_max[0]);//Для оси Ox
-     ui->widget->yAxis->setRange(range_min[1], range_max[1]);//Для оси Oy
-
-     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables);
-     ui->widget->replot();
-
-
-     if( myvector.size() - 1 >= 0 )
+     Vectors vecs;
+     for(int i = 0; i< myvector.size(); i++)
      {
-           Vectors vec;
-           vec = myvector[myvector.size() - 1];
+         vecs = myvector.at(i);
+         vecs.action->setChecked(false);
 
-           vec.action->setChecked(false);
-
-           myvector.pop_back();
-           myvector.push_back(vec);
+         myvector.removeAt(i);
+         myvector.insert(i, vecs);
      }
 
      Vectors vec;
@@ -320,14 +232,10 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
      action->setChecked(true);
 
      vec.action = action;
+     vec.curve = mycurve.size() - 1;
      myvector.push_back(vec);
 
-     curr_vector = myvector.size() - 1;
-
-     QString str = "Количество итераций:"+QString::number(count)+"\nВремя выполнения работы:"+QString::number(time->elapsed())+" mсекунд"+"\n"+"Количество элементов:"+QString::number(x.size())\
-             +"\nКоличество операций:"+QString::number(iter_count);
-
-     QMessageBox::information(this,tr("Результаты"), str);
+     PlotGraph(mycurve.size()-1, rgb, dynamic, x, y);
 }
 
 void MainWindow::on_actionClear_Grapg_triggered()
@@ -344,6 +252,7 @@ void MainWindow::on_actionClear_Grapg_triggered()
     myvector.clear();
     ui->menuEdit->clear();
     ui->menuEdit->addAction("Iteration",this, SLOT(on_actionIteration_triggered()));
+    ui->menuEdit->addAction("Combine",this, SLOT(on_actionCombine_triggered()));
     ui->menuEdit->addSeparator();
 
 #else
@@ -370,6 +279,130 @@ void MainWindow::get_color_fstring(QString color, Color rgb[3])
     }
 
 }
+void MainWindow::on_actionOpen_triggered()
+{
+    if(myvector.size() > 0)
+    {
+        int result = QMessageBox::warning(this, "Предупреждение", "Все сохранненые данные будут утеряны\n Сохранить?", "Yes", "No", QString(), 0, 1 );
+        if (!result)
+            SaveProgress("temp.cfg");
+    }
+
+
+   MainWindow::on_actionClear_Grapg_triggered();
+   QString filename = QFileDialog::getOpenFileName( this, "Открыть файл", QDir::currentPath(),"Cfg|Ini (*.ini *.cfg);;All files (*.*)");
+
+   if (filename.size() == 0)
+       return;
+
+   QFile file(filename);
+   QByteArray data;
+
+   if( !file.open(QIODevice::ReadOnly))
+       return;
+   data = file.readAll();
+
+   QString fdata = QString(data);
+   QStringList list;
+
+   list = fdata.split("\r\n");
+
+   bool index = false;
+   int line = 0;
+
+   QString qstr[14];
+
+   foreach(QString str, list)
+   {
+        if(str.contains("[START]"))
+        {
+            index = true;
+            line = 0;
+            continue;
+        }
+        else if(str.contains("[END]"))
+        {
+            index = false;
+            qstr[13] = qstr[9]+"x"+qstr[10]+"x"+qstr[11];
+
+            on_pushButton_clicked(qstr[0], qstr[1], qstr[4].toDouble(), qstr[5].toDouble(), qstr[2].toDouble(),qstr[3].toDouble(),\
+                    qstr[12],qstr[13],static_cast<bool>(qstr[7].toInt()), qstr[6].toDouble(), qstr[8].toInt());
+
+            continue;
+        }
+
+        if (!index)
+            continue;
+
+        qstr[line] = str;
+//        qDebug() << line << ":" << str;
+        line++;
+
+   }
+
+   //QMessageBox::information(this, "Info", fdata);
+}
+
+void MainWindow::SaveProgress (QString filename)
+{
+    QFile file(filename);
+
+    if(file.isOpen())
+        return;
+
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return;
+
+    QTextStream write(&file);
+
+    Vectors vec;
+    for(int i = 0; i<myvector.size(); i++)
+    {
+        vec = myvector.at(i);
+
+        write << "[START]" << "\n";
+
+        write << vec.core->get_function(0) << "\n";
+        write << vec.core->get_function(1) << "\n";
+
+        write << vec.b_min << "\n";
+        write << vec.b_max << "\n";
+        write << vec.min << "\n";
+        write << vec.max << "\n";
+
+        write << vec.h << "\n";
+        write << vec.dynamic << "\n";
+        write << vec.num << "\n";
+
+        write << vec.rgb[0] << "\n";
+        write << vec.rgb[1] << "\n";
+        write << vec.rgb[2] << "\n";
+
+       // qDebug() << "qq";
+/*
+        for(int j = 0; j<vec.vec_x.size(); j++)
+            write << vec.vec_x.at(j) << " ";
+
+        write << "\n";
+        qApp->processEvents();
+       // qDebug() << "qq2";
+
+        for(int j = 0; j<vec.vec_y.size(); j++)
+            write << vec.vec_y.at(j) << " ";
+
+       // qDebug() << "qq3";
+        write << "\n";
+        */
+
+        write << vec.core->get_function(3) << "\n";
+
+        write << "[END]" << "\n";
+        qApp->processEvents();
+    }
+
+    file.close();
+}
+
 void MainWindow::on_actionSave_triggered()
 {
     if (x.size() <= 0 || y.size() <= 0)
@@ -384,36 +417,10 @@ void MainWindow::on_actionSave_triggered()
                                 QDir::currentPath(),
                                 "Cfg|Ini (*.ini *.cfg);;All files (*.*)");
 
-    if (filename.size() <= 0)
-    {
-        QMessageBox::warning(this,"Предупреждения", "Неверное имя файла");
-        return;
-    }
-
-    QFile file(filename);
-
-    if(file.isOpen())
+    if (filename.size() <= 0 || myvector.size() <= 0)
         return;
 
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return;
-
-    QTextStream write(&file);
-
-    write << "F=" << "\n";
-    write << "G=" << "\n";
-    write << "Tmin=" << "\n";
-    write << "Tmax=" << "\n";
-    write << "Gmin=" << "\n";
-    write << "Gmax=" << "\n";
-    write << "iter=" << "\n";
-    write << "step=" << "\n";
-    write << "RGB=" << "\n";
-    write << "Color=" << "\n";
-    write << "Const=" << "\n";
-
-
-    file.close();
+    SaveProgress(filename);
 }
 void MainWindow::on_actionIteration_triggered()
 {
@@ -435,5 +442,194 @@ void MainWindow::on_actionIteration_triggered()
     if( cur == -1)
         return;
 
-    //iteract(vec.core, vec.min, vec.min, vec.max,vec.max, vec.vec_x, vec.vec_y, 0);
+    vec = myvector.at(cur);
+
+    TakeIteration(vec.core, vec.min, vec.max, vec.b_min, vec.b_max, vec.h, vec.vec_x, vec.vec_y, vec.num, vec.num+1);
+    mycurve.at(vec.curve)->clearData();
+
+    PlotGraph(vec.curve, vec.rgb, vec.dynamic, vec.vec_x, vec.vec_y);
+
+    myvector.remove(cur);
+
+    vec.num+=1;
+
+    myvector.insert(cur, vec);
 }
+void MainWindow::on_actionCombine_triggered()
+{
+    QVector<QVector<double>> _x;
+    QVector<QVector<double>> _y;
+
+    QVector<double> xx;
+    QVector<double> yy;
+
+    int x_size = 0;
+    int y_size = 0;
+
+    Vectors vec;
+
+    for(int i = 0; i< myvector.size(); i++)
+    {
+        vec = myvector.at(i);
+
+        if( !i )
+        {
+            x_size = vec.vec_x.size();
+            y_size = vec.vec_y.size();
+        }
+
+        if( i > 0 && vec.vec_x.size() < x_size)  x_size = vec.vec_x.size();
+        if( i > 0 && vec.vec_y.size() < y_size)  y_size = vec.vec_y.size();
+
+        _x.push_back(vec.vec_x);
+        _y.push_back(vec.vec_y);
+    }
+
+    int size = x_size > y_size ? y_size : x_size;
+    int _siz = _x.size() > _y.size() ? _y.size() : _x.size();
+
+    for(int i = 0; i<size; i++)
+    {
+        for(int j = 1; j< _siz; j++)
+        {
+            if( _x[j-1][i] == _x[j][i])
+                xx.push_back(_x[j-1][i]);
+
+            if( _y[j-1][i] == _y[j][i])
+                yy.push_back(_y[j-1][i]);
+        }
+    }
+
+    QCPCurve *curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
+    ui->widget->addPlottable(curve);
+
+    mycurve.push_back(curve);
+    int rgb[3] = {200, 100, 50};
+
+    MainWindow::on_actionClear_Grapg_triggered();
+    PlotGraph(mycurve.size()-1, rgb, 1, xx, yy);
+
+}
+
+void MainWindow::PlotGraph( int this_curve, int rgb[3], bool dynamic, QVector<double> x, QVector<double> y)
+{
+    QColor colors(rgb[0],rgb[1],rgb[2]);
+    QPen pen(colors);
+
+    QCPCurve * curve;
+    curve = mycurve.at(this_curve);
+
+    curve->setPen(pen);
+
+    if( dynamic )
+    {
+        curr_pos = 0;
+        pre_pos = 0;
+
+        MainWindow::x = x;
+        MainWindow::y = y;
+
+        timer->start(100);
+    }
+    else
+    {
+        work = false;
+        curve->setData(x,y);
+    }
+
+    //Подписываем оси Ox и Oy
+    ui->widget->xAxis->setLabel("x");
+    ui->widget->yAxis->setLabel("y");
+
+    ui->widget->axisRect()->setupFullAxesBox();
+
+    //Установим область, которая будет показываться на графике
+    ui->widget->xAxis->setRange(range_min[0], range_max[0]);//Для оси Ox
+    ui->widget->yAxis->setRange(range_min[1], range_max[1]);//Для оси Oy
+
+    ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables);
+    ui->widget->replot();
+}
+void MainWindow::TakeIteration(IterCore * core, double min, double max, double b_min, double b_max, double _h, QVector<double> &x, QVector<double> &y, int step, int finish)
+{
+    double a = min;
+    double b =  max;
+
+    h = _h;
+
+    QTime * time = new QTime;
+    time->start();
+
+    if(step == 0)
+    {
+        x.clear();
+        y.clear();
+
+    }
+
+    _x.clear();
+    _y.clear();
+
+    range_min[0] = b_min;
+    range_min[1] = b_min;
+    range_max[0] = b_max;
+    range_max[1] = b_max;
+
+    iter_count = 0;
+
+    if(step == 0)
+        iteract(core,a,a,b,b,x,y, 0);
+
+    int count = step-1 < 0 ? 0 : (step-1);// Счетчик итераций;
+    int len = 0;
+    QProgressDialog progress(tr("Процесс создания графика"), tr("Отмена"), count, finish, this);
+    progress.setModal(true);
+    progress.setFixedSize(250, 125);
+    progress.show();
+
+    int start = 0;
+    int value[2];
+
+    int _value[2];
+    while (++count < finish)
+    {
+        len = x.size();
+        //start = 0;
+        for(int i = 0; i<len-1;)
+        {
+            start = i;
+
+#ifdef OPTIMIZE
+            value[TYPE_X] = get_function(core, TYPE_X, x[i], y[i]);
+            value[TYPE_Y] = get_function(core, TYPE_Y, x[i], y[i]);
+            while(i < len - 1)
+            {
+#endif
+                i++;
+#ifdef OPTIMIZE
+                _value[TYPE_X] = get_function(core, TYPE_X, x[i], y[i]);
+                _value[TYPE_Y] = get_function(core, TYPE_Y, x[i], y[i]);
+
+                if( get_dl(value[0], value[1], _value[0], _value[1]) >= h || abs(x[start] - x[i]) >= h/2 || abs(y[start] - y[i]) >= h/2)
+                    break;
+            }
+#endif
+            iteract(core,x.at(start),y.at(start),x.at(i),y.at(i),_x,_y, 0);// делаем итерацию для двух точек, поэтому нам нужно 4 координаты и записываем это в массив pts2
+        }
+        x = _x;
+        y = _y;
+
+        _x.clear();
+        _y.clear();
+        progress.setValue(count);
+        qApp->processEvents();
+    }
+     progress.cancel();
+
+     QString str = "Количество итераций:"+QString::number(count)+"\nВремя выполнения работы:"+QString::number(time->elapsed())+" mсекунд"+"\n"+"Количество элементов:"+QString::number(x.size())\
+             +"\nКоличество операций:"+QString::number(iter_count);
+
+     QMessageBox::information(this,tr("Результаты"), str);
+    // work = false;
+}
+
