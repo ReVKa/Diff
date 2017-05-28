@@ -16,13 +16,16 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     qcustomplot.cpp \
     dialog.cpp \
-    itercore.cpp
+    itercore.cpp \
+    settings.cpp
 
 HEADERS  += mainwindow.h \
     qcustomplot.h \
     dialog.h \
     comments.h \
-    itercore.h
+    itercore.h \
+    settings.h
 
 FORMS    += mainwindow.ui \
-    dialog.ui
+    dialog.ui \
+    settings.ui

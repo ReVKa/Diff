@@ -10,6 +10,9 @@
 #include <QByteArray>
 #include <QAction>
 
+
+#include "settings.h"
+
 #define OPTIMIZE
 #define clamp(a, b, c) a= a>b? b : a< c ? c : a
 
@@ -35,6 +38,37 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->menuEdit->addSeparator();
 
     curr_vector = -1;
+
+    setWindowTitle("ProgaDiff");
+
+    QSettings settings(APP_ORG,APP_NAME);
+
+    short theme = settings.value("settings/theme", 0).toInt();
+
+    if(theme == 1)
+    {
+        // Создаём палитру для тёмной темы оформления
+        QPalette darkPalette;
+
+        // Настраиваем палитру для цветовых ролей элементов интерфейса
+        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::WindowText, Qt::white);
+        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+        darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+
+        // Устанавливаем данную палитру
+        qApp->setPalette(darkPalette);
+    }
+    else    qApp->setPalette(style()->standardPalette());
 }
 
 MainWindow::~MainWindow()
@@ -463,56 +497,43 @@ void MainWindow::on_actionCombine_triggered()
     QVector<double> xx;
     QVector<double> yy;
 
-    int x_size = 0;
-    int y_size = 0;
-
     Vectors vec;
 
     for(int i = 0; i< myvector.size(); i++)
     {
         vec = myvector.at(i);
 
-        if( !i )
-        {
-            x_size = vec.vec_x.size();
-            y_size = vec.vec_y.size();
-        }
-
-        if( i > 0 && vec.vec_x.size() < x_size)  x_size = vec.vec_x.size();
-        if( i > 0 && vec.vec_y.size() < y_size)  y_size = vec.vec_y.size();
-
         _x.push_back(vec.vec_x);
         _y.push_back(vec.vec_y);
     }
 
-    int size = x_size > y_size ? y_size : x_size;
-    int _siz = _x.size() > _y.size() ? _y.size() : _x.size();
+    for(int i = 0; i<_x.size() -1; i++)
+        for(int j = 0; j< _x[i].size(); j++)
+            for(int k = 0; k< _x[i+1].size(); k++)
+            {
+                if( MainWindow::get_dl(_x[i][j], _y[i][j], _x[i+1][k], _y[i+1][k]) < 0.05)
+                {
+                    xx.push_back(_x[i][j]);
+                    yy.push_back(_y[i][j]);
+                }
+            }
 
-    for(int i = 0; i<size; i++)
-    {
-        for(int j = 1; j< _siz; j++)
-        {
-            if( _x[j-1][i] == _x[j][i])
-                xx.push_back(_x[j-1][i]);
-
-            if( _y[j-1][i] == _y[j][i])
-                yy.push_back(_y[j-1][i]);
-        }
-    }
+    MainWindow::on_actionClear_Grapg_triggered();
 
     QCPCurve *curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
     ui->widget->addPlottable(curve);
 
     mycurve.push_back(curve);
     int rgb[3] = {200, 100, 50};
-
-    MainWindow::on_actionClear_Grapg_triggered();
     PlotGraph(mycurve.size()-1, rgb, 1, xx, yy);
-
 }
 
 void MainWindow::PlotGraph( int this_curve, int rgb[3], bool dynamic, QVector<double> x, QVector<double> y)
 {
+
+    if (mycurve.size() <= 0)
+        return;
+
     QColor colors(rgb[0],rgb[1],rgb[2]);
     QPen pen(colors);
 
@@ -633,3 +654,14 @@ void MainWindow::TakeIteration(IterCore * core, double min, double max, double b
     // work = false;
 }
 
+
+void MainWindow::on_actionRelease_triggered()
+{
+    QMessageBox::information(this,tr("О Приложении"), "Версия "+MainWindow::version+"\n");
+}
+
+void MainWindow::on_actionPreference_triggered()
+{
+    Settings *wnd = new Settings(this);
+    wnd->show();
+}

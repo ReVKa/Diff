@@ -4,15 +4,21 @@
 #include <QMainWindow>
 #include "qcustomplot.h"
 #include "dialog.h"
+#include "settings.h"
 
 #include <QTime>
 #include <QAction>
+#include <QSettings>
 
 #include <itercore.h>
 
 #define Color int
 
 #define NEWQCP
+
+#define APP_NAME "ProgaDiff"
+#define APP_ORG "RevCrew"
+#define APP_DOMAIN "http://progadif.cs-suite.ru"
 
 struct Vectors
 {
@@ -59,6 +65,10 @@ private slots:
     void on_actionCombine_triggered();
     void on_actionOpen_triggered();
 
+    void on_actionRelease_triggered();
+
+    void on_actionPreference_triggered();
+
 private:
     Ui::MainWindow *ui;
     double range_min[2]; // 0 - x, 1 - y
@@ -78,6 +88,7 @@ private:
 
     double h;
     bool work = false;
+    QString version = "0.0.1";
 
     void iteract(IterCore *core, double a, double b, double c, double d, QVector<double> &x, QVector<double> &y, int DEBUG);
     double get_dl( double fx, double fy, double gx, double gy);

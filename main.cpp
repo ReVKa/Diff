@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include <QStyleFactory>
 
 #include "itercore.h"
 
@@ -17,6 +18,11 @@ static const int LOAD_TIME = 3 * 1000;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    QCoreApplication::setOrganizationName(APP_ORG);
+    QCoreApplication::setOrganizationDomain(APP_DOMAIN);
+    QCoreApplication::setApplicationName(APP_NAME);
+
 #ifdef LOAD_SCREEN
     QSplashScreen *splash = new QSplashScreen;
     splash->setPixmap(QPixmap("D:/icons/diff.png"));
@@ -36,6 +42,11 @@ int main(int argc, char *argv[])
         qApp->processEvents();
     }
 #endif
+    //qDebug() << QStyleFactory::keys();
+
+    qApp->setStyle(QStyleFactory::create("Fusion"));
+
+
     MainWindow w;
 #ifdef LOAD_SCREEN
     splash->finish( &w);
