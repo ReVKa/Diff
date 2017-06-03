@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/Images">
+        <file>1_folder_empty_6897.png</file>
+        <file>47.png</file>
+        <file>185095.png</file>
+        <file>disk.png</file>
+        <file>Gnome-Document-Open-64.png</file>
+    </qresource>
+</RCC>

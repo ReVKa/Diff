@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include "qcustomplot.h"
 #include "dialog.h"
-#include "settings.h"
 
 #include <QTime>
 #include <QAction>
@@ -19,6 +18,11 @@
 #define APP_NAME "ProgaDiff"
 #define APP_ORG "RevCrew"
 #define APP_DOMAIN "http://progadif.cs-suite.ru"
+
+const QString settings_save_theme = "settings/theme";
+const QString settings_save_step_combine = "settings/step_combine";
+const QString settings_save_opt = "settings/opt";
+const QString settings_save_info = "settings/infotable";
 
 struct Vectors
 {
@@ -48,6 +52,9 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
+    void SetDefaultTheme();
+    void SetDarkTheme();
+
 public slots:
     void on_pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
                                QString color, bool dynamic, double _h,int num);
@@ -88,6 +95,7 @@ private:
 
     double h;
     bool work = false;
+    bool first_add = false;
     QString version = "0.0.1";
 
     void iteract(IterCore *core, double a, double b, double c, double d, QVector<double> &x, QVector<double> &y, int DEBUG);

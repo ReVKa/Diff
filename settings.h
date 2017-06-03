@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QCloseEvent>
 #include <QMessageBox>
+
 #include "mainwindow.h"
 
 namespace Ui {
@@ -17,6 +18,9 @@ class Settings : public QDialog
 public:
     explicit Settings(QWidget *parent = 0);
     ~Settings();
+
+    void SetDefaultTheme();
+    void SetDarkTheme();
 private slots:
 
     void on_checkBox_clicked();

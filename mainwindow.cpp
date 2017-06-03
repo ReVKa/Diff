@@ -43,32 +43,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QSettings settings(APP_ORG,APP_NAME);
 
-    short theme = settings.value("settings/theme", 0).toInt();
+    short theme = settings.value(settings_save_theme, 0).toInt();
 
-    if(theme == 1)
-    {
-        // Создаём палитру для тёмной темы оформления
-        QPalette darkPalette;
-
-        // Настраиваем палитру для цветовых ролей элементов интерфейса
-        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::WindowText, Qt::white);
-        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
-        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-        darkPalette.setColor(QPalette::Text, Qt::white);
-        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ButtonText, Qt::white);
-        darkPalette.setColor(QPalette::BrightText, Qt::red);
-        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
-
-        // Устанавливаем данную палитру
-        qApp->setPalette(darkPalette);
-    }
-    else    qApp->setPalette(style()->standardPalette());
+    if(theme == 1)  SetDarkTheme();
+    else            SetDefaultTheme();
 }
 
 MainWindow::~MainWindow()
@@ -90,10 +68,6 @@ double get_function( IterCore* core, int type,double x, double y)
 {
     switch (type)
     {
-    //case TYPE_X: return x;//((double)(x+y+0.4*x-0.4*pow(x,3)));
-    //case TYPE_Y: return x;//((double)y+0.4*x-0.4*pow(x,3));
-    //case TYPE_X: return ((double)(x+y+0.4*x-0.4*pow(x,3)));
-    //case TYPE_Y: return ((double)y+0.4*x-0.4*pow(x,3));
         case TYPE_X:    return core->get_function_value(FUNCTIONS_F,x,y);
         case TYPE_Y:    return core->get_function_value(FUNCTIONS_G,x,y);
     }
@@ -507,11 +481,14 @@ void MainWindow::on_actionCombine_triggered()
         _y.push_back(vec.vec_y);
     }
 
+    QSettings settings(APP_ORG,APP_NAME);
+    double _h = settings.value(settings_save_step_combine, 0.05).toDouble();
+
     for(int i = 0; i<_x.size() -1; i++)
         for(int j = 0; j< _x[i].size(); j++)
             for(int k = 0; k< _x[i+1].size(); k++)
             {
-                if( MainWindow::get_dl(_x[i][j], _y[i][j], _x[i+1][k], _y[i+1][k]) < 0.05)
+                if( MainWindow::get_dl(_x[i][j], _y[i][j], _x[i+1][k], _y[i+1][k]) < _h)
                 {
                     xx.push_back(_x[i][j]);
                     yy.push_back(_y[i][j]);
@@ -525,6 +502,9 @@ void MainWindow::on_actionCombine_triggered()
 
     mycurve.push_back(curve);
     int rgb[3] = {200, 100, 50};
+
+    for(int i = 0; i<3; i++)
+        rgb[i] = qrand() % 255;
     PlotGraph(mycurve.size()-1, rgb, 1, xx, yy);
 }
 
@@ -647,11 +627,16 @@ void MainWindow::TakeIteration(IterCore * core, double min, double max, double b
     }
      progress.cancel();
 
-     QString str = "Количество итераций:"+QString::number(count)+"\nВремя выполнения работы:"+QString::number(time->elapsed())+" mсекунд"+"\n"+"Количество элементов:"+QString::number(x.size())\
+
+     QSettings settings(APP_ORG,APP_NAME);
+     if( settings.value(settings_save_info,true).toBool())
+     {
+        QString str = "Количество итераций:"+QString::number(count)+"\nВремя выполнения работы:"+QString::number(time->elapsed())+" mсекунд"+"\n"+"Количество элементов:"+QString::number(x.size())\
              +"\nКоличество операций:"+QString::number(iter_count);
 
-     QMessageBox::information(this,tr("Результаты"), str);
-    // work = false;
+         QMessageBox::information(this,tr("Результаты"), str);
+        // work = false;
+     }
 }
 
 
@@ -664,4 +649,31 @@ void MainWindow::on_actionPreference_triggered()
 {
     Settings *wnd = new Settings(this);
     wnd->show();
+}
+void MainWindow::SetDefaultTheme()
+{
+    qApp->setPalette(style()->standardPalette());
+}
+void MainWindow::SetDarkTheme()
+{
+    // Создаём палитру для тёмной темы оформления
+    QPalette darkPalette;
+
+    // Настраиваем палитру для цветовых ролей элементов интерфейса
+    darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+    darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+    darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+    darkPalette.setColor(QPalette::Text, Qt::white);
+    darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ButtonText, Qt::white);
+    darkPalette.setColor(QPalette::BrightText, Qt::red);
+    darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+
+    // Устанавливаем данную палитру
+    qApp->setPalette(darkPalette);
 }

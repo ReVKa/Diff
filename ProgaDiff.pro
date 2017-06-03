@@ -24,8 +24,12 @@ HEADERS  += mainwindow.h \
     dialog.h \
     comments.h \
     itercore.h \
-    settings.h
+    settings.h \
+    global_variable.h
 
 FORMS    += mainwindow.ui \
     dialog.ui \
     settings.ui
+
+RESOURCES += \
+    resourse.qrc
