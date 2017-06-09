@@ -13,7 +13,7 @@
 
 #include "settings.h"
 
-#define OPTIMIZE
+//#define OPTIMIZE
 #define clamp(a, b, c) a= a>b? b : a< c ? c : a
 
 
@@ -31,11 +31,11 @@ MainWindow::MainWindow(QWidget *parent) :
 #endif
 
     timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(on_timer_event()));
+    connect(timer, SIGNAL(timeout()), this, SLOT(timer_event()));
 
-    ui->menuEdit->addAction("Iteration",this, SLOT(on_actionIteration_triggered()));
-    ui->menuEdit->addAction("Combine",this, SLOT(on_actionCombine_triggered()));
-    ui->menuEdit->addSeparator();
+   // ui->menuEdit->addAction("Iteration",this, SLOT(actionIteration_triggered()));
+   // ui->menuEdit->addAction("Combine",this, SLOT(actionCombine_triggered()));
+   // ui->menuEdit->addSeparator();
 
     curr_vector = -1;
 
@@ -57,7 +57,7 @@ void MainWindow::on_actionNew_triggered()
 {
     Dialog *wnd = new Dialog(this);
     QObject::connect(wnd,SIGNAL(OnOkClicked(QString,QString,double,double,double,double,QString,QString,bool,double,int)),\
-                     this, SLOT(on_pushButton_clicked(QString,QString,double,double,double,double,QString,QString,bool,double,int)));
+                     this, SLOT(pushButton_clicked(QString,QString,double,double,double,double,QString,QString,bool,double,int)));
     wnd->show();
 }
 
@@ -99,23 +99,23 @@ void MainWindow::iteract(IterCore* core,double a, double b, double c, double d, 
 {
     double start_x = a, start_y = b, end_x = c, end_y = d;
 
-    double a_x = get_function(core, TYPE_X, start_x, start_y);
-    double a_y = get_function(core, TYPE_Y, start_x, start_y);
-
     double b_x = get_function(core, TYPE_X, end_x, end_y);
     double b_y = get_function(core, TYPE_Y, end_x, end_y);
 
-    double dl = get_dl(a_x, a_y, b_x, b_y);
-    add_to_image( a_x, a_y, range_min[0],range_min[1],range_max[0], range_max[1], x, y);
+    double c_x = get_function(core, TYPE_X, start_x, start_y);
+    double c_y = get_function(core, TYPE_Y, start_x, start_y);
 
-    double c_x = a_x;
-    double c_y = a_y;
+    if( first_add)
+    {
+        add_to_image( c_x, c_y, range_min[0],range_min[1],range_max[0], range_max[1], x, y);
+        first_add = false;
+    }
 
     double h_x = 0.0;
     double h_y = 0.0;
 
     double t_x, t_y;
-    //QVector<double> vec;
+    double dl = get_dl(c_x, c_y, b_x, b_y);
 
     while( dl > h) // пока длина больше H
     {
@@ -123,9 +123,10 @@ void MainWindow::iteract(IterCore* core,double a, double b, double c, double d, 
         t_y = end_y;// Присваем координаты конца отрезка
         while ( dl > h ) // пока длина больше H
         {
-
+            //QMessageBox::information(this, "Process", "DL:"+QString::number(dl)+"\nStep:"+QString::number(h));
             t_x = get_midl(start_x, t_x); // Получаем середину
             t_y = get_midl(start_y, t_y);// Получаем середину
+
             h_x = get_function(core, TYPE_X,t_x, t_y);// Отображаем середину
             h_y = get_function(core, TYPE_Y,t_x, t_y); // Отображаем середину
             dl = get_dl(c_x, c_y, h_x, h_y);// Получаем длина между серединой и отображением A
@@ -140,7 +141,6 @@ void MainWindow::iteract(IterCore* core,double a, double b, double c, double d, 
         c_y = h_y;
         //Получаем длина между A и B
         dl = get_dl(h_x, h_y, b_x, b_y);
-
         if(DEBUG)
             QMessageBox::information(this,"title2","dl:"+QString::number(dl));
     }
@@ -148,7 +148,7 @@ void MainWindow::iteract(IterCore* core,double a, double b, double c, double d, 
     // ДОбавляем последнюю точку на рисунок
     add_to_image( b_x, b_y, range_min[0],range_min[1],range_max[0], range_max[1], x, y);
 }
-void MainWindow::on_timer_event()
+void MainWindow::timer_event()
 {
     int len = x.length();
 
@@ -176,7 +176,7 @@ void MainWindow::on_timer_event()
     curr_pos+=x.length()/10;
 }
 
-void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
+void MainWindow::pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
                                        QString color, bool dynamic, double _h,int num)
 {
 
@@ -235,7 +235,7 @@ void MainWindow::on_pushButton_clicked(QString f, QString g, double min, double 
      vec.rgb[1] = rgb[1];
      vec.rgb[2] = rgb[2];
 
-     QAction * action = ui->menuEdit->addAction("MyVector"+QString::number( myvector.size() ), this, SLOT(close()));
+     QAction * action = ui->menuEdit->addAction("MyVector"+QString::number( myvector.size() ), this, SLOT(trigger_clicked(myvector.size())));
      action->setCheckable(true);
      action->setChecked(true);
 
@@ -257,10 +257,18 @@ void MainWindow::on_actionClear_Grapg_triggered()
     }
     mycurve.clear();
 
+    Vectors vec;
+    for(int i = 0; i<myvector.size(); i++)
+    {
+        vec = myvector.at(i);
+        ui->menuEdit->removeAction(vec.action);
+    }
+
     myvector.clear();
-    ui->menuEdit->clear();
-    ui->menuEdit->addAction("Iteration",this, SLOT(on_actionIteration_triggered()));
-    ui->menuEdit->addAction("Combine",this, SLOT(on_actionCombine_triggered()));
+
+    //ui->menuEdit->clear();
+   // ui->menuEdit->addAction("Iteration",this, SLOT(actionIteration_triggered()));
+   // ui->menuEdit->addAction("Combine",this, SLOT(actionCombine_triggered()));
     ui->menuEdit->addSeparator();
 
 #else
@@ -333,7 +341,7 @@ void MainWindow::on_actionOpen_triggered()
             index = false;
             qstr[13] = qstr[9]+"x"+qstr[10]+"x"+qstr[11];
 
-            on_pushButton_clicked(qstr[0], qstr[1], qstr[4].toDouble(), qstr[5].toDouble(), qstr[2].toDouble(),qstr[3].toDouble(),\
+            pushButton_clicked(qstr[0], qstr[1], qstr[4].toDouble(), qstr[5].toDouble(), qstr[2].toDouble(),qstr[3].toDouble(),\
                     qstr[12],qstr[13],static_cast<bool>(qstr[7].toInt()), qstr[6].toDouble(), qstr[8].toInt());
 
             continue;
@@ -444,24 +452,19 @@ void MainWindow::on_actionIteration_triggered()
             continue;
 
         cur = i;
-        break;
+        vec = myvector.at(cur);
+
+        TakeIteration(vec.core, vec.min, vec.max, vec.b_min, vec.b_max, vec.h, vec.vec_x, vec.vec_y, vec.num, vec.num+1);
+        mycurve.at(vec.curve)->clearData();
+
+        PlotGraph(vec.curve, vec.rgb, vec.dynamic, vec.vec_x, vec.vec_y);
+
+        myvector.removeAt(cur);
+
+        vec.num+=1;
+
+        myvector.insert(cur, vec);
     }
-
-    if( cur == -1)
-        return;
-
-    vec = myvector.at(cur);
-
-    TakeIteration(vec.core, vec.min, vec.max, vec.b_min, vec.b_max, vec.h, vec.vec_x, vec.vec_y, vec.num, vec.num+1);
-    mycurve.at(vec.curve)->clearData();
-
-    PlotGraph(vec.curve, vec.rgb, vec.dynamic, vec.vec_x, vec.vec_y);
-
-    myvector.remove(cur);
-
-    vec.num+=1;
-
-    myvector.insert(cur, vec);
 }
 void MainWindow::on_actionCombine_triggered()
 {
@@ -578,6 +581,8 @@ void MainWindow::TakeIteration(IterCore * core, double min, double max, double b
 
     iter_count = 0;
 
+    first_add = true;
+
     if(step == 0)
         iteract(core,a,a,b,b,x,y, 0);
 
@@ -589,13 +594,15 @@ void MainWindow::TakeIteration(IterCore * core, double min, double max, double b
     progress.show();
 
     int start = 0;
+#ifdef OPTIMIZE
     int value[2];
-
     int _value[2];
+#endif
     while (++count < finish)
     {
         len = x.size();
         //start = 0;
+        first_add = true;
         for(int i = 0; i<len-1;)
         {
             start = i;
@@ -616,6 +623,7 @@ void MainWindow::TakeIteration(IterCore * core, double min, double max, double b
             }
 #endif
             iteract(core,x.at(start),y.at(start),x.at(i),y.at(i),_x,_y, 0);// делаем итерацию для двух точек, поэтому нам нужно 4 координаты и записываем это в массив pts2
+            qApp->processEvents();
         }
         x = _x;
         y = _y;
@@ -626,7 +634,6 @@ void MainWindow::TakeIteration(IterCore * core, double min, double max, double b
         qApp->processEvents();
     }
      progress.cancel();
-
 
      QSettings settings(APP_ORG,APP_NAME);
      if( settings.value(settings_save_info,true).toBool())
@@ -677,3 +684,13 @@ void MainWindow::SetDarkTheme()
     // Устанавливаем данную палитру
     qApp->setPalette(darkPalette);
 }
+void MainWindow::trigger_clicked(int id)
+{
+    Vectors vecs;
+    vecs = myvector.at(id);
+    vecs.action->isChecked() ?  vecs.action->setChecked(false) :  vecs.action->setChecked(true);
+
+    myvector.removeAt(id);
+    myvector.insert(id, vecs);
+}
+

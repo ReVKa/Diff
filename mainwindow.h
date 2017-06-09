@@ -24,6 +24,12 @@ const QString settings_save_step_combine = "settings/step_combine";
 const QString settings_save_opt = "settings/opt";
 const QString settings_save_info = "settings/infotable";
 
+struct PM
+{
+    double cord[2];
+    double cord_value[2];
+};
+
 struct Vectors
 {
     QVector<double> vec_x;
@@ -56,10 +62,10 @@ public:
     void SetDarkTheme();
 
 public slots:
-    void on_pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
+    void pushButton_clicked(QString f, QString g, double min, double max, double b_min, double b_max, QString constText,\
                                QString color, bool dynamic, double _h,int num);
     void on_actionNew_triggered();
-    void on_timer_event();
+
 
     void on_actionClear_Grapg_triggered();
     void SaveProgress (QString filename);
@@ -67,14 +73,19 @@ public slots:
     void get_color_fstring(QString color, Color rgb[3]);
 
 private slots:
+    void timer_event();
     void on_actionSave_triggered();
-    void on_actionIteration_triggered();
-    void on_actionCombine_triggered();
+//    void actionIteration_triggered();
     void on_actionOpen_triggered();
 
     void on_actionRelease_triggered();
 
     void on_actionPreference_triggered();
+
+    void trigger_clicked(int id);
+    void on_actionIteration_triggered();
+
+    void on_actionCombine_triggered();
 
 private:
     Ui::MainWindow *ui;
