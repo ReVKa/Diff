@@ -19,6 +19,8 @@
 #define APP_ORG "RevCrew"
 #define APP_DOMAIN "http://progadif.cs-suite.ru"
 
+#define QPLOT_BETA_2
+
 const QString settings_save_theme = "settings/theme";
 const QString settings_save_step_combine = "settings/step_combine";
 const QString settings_save_opt = "settings/opt";

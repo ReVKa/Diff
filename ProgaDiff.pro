@@ -11,6 +11,9 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport script
 TARGET = ProgaDiff
 TEMPLATE = app
 
+LIBS += -lopengl32
+DEFINES += QCUSTOMPLOT_USE_OPENGL
+
 
 SOURCES += main.cpp\
         mainwindow.cpp \

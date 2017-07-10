@@ -10,6 +10,7 @@
 #include <QByteArray>
 #include <QAction>
 
+#include <qcustomplot.h>
 
 #include "settings.h"
 
@@ -47,6 +48,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     if(theme == 1)  SetDarkTheme();
     else            SetDefaultTheme();
+
+#ifdef QPLOT_BETA_2
+    ui->widget->setOpenGl(true);
+
+    if (ui->widget->openGl())
+        qDebug() << "True";
+#endif
 }
 
 MainWindow::~MainWindow()
@@ -203,7 +211,10 @@ void MainWindow::pushButton_clicked(QString f, QString g, double min, double max
       get_color_fstring(color, rgb);
 
       QCPCurve *curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
+
+#ifndef QPLOT_BETA_2
       ui->widget->addPlottable(curve);
+#endif
 
       mycurve.push_back(curve);
 
@@ -235,7 +246,8 @@ void MainWindow::pushButton_clicked(QString f, QString g, double min, double max
      vec.rgb[1] = rgb[1];
      vec.rgb[2] = rgb[2];
 
-     QAction * action = ui->menuEdit->addAction("MyVector"+QString::number( myvector.size() ), this, SLOT(trigger_clicked(myvector.size())));
+     QAction * action = ui->menuEdit->addAction("MyVector"+QString::number( myvector.size() ), \
+                                                this, SLOT(trigger_clicked( myvector.size() )));
      action->setCheckable(true);
      action->setChecked(true);
 
@@ -252,7 +264,11 @@ void MainWindow::on_actionClear_Grapg_triggered()
 #ifdef NEWQCP
     for(int i = 0; i<mycurve.size(); i++)
     {
+#ifndef QPLOT_BETA_2
         mycurve.at(i)->clearData();
+#else
+        mycurve.at(i)->setData(QVector<double>(),QVector<double>());
+#endif
         ui->widget->removePlottable(mycurve.at(i));
     }
     mycurve.clear();
@@ -265,6 +281,8 @@ void MainWindow::on_actionClear_Grapg_triggered()
     }
 
     myvector.clear();
+
+    ui->widget->clearPlottables();
 
     //ui->menuEdit->clear();
    // ui->menuEdit->addAction("Iteration",this, SLOT(actionIteration_triggered()));
@@ -441,6 +459,13 @@ void MainWindow::on_actionSave_triggered()
 void MainWindow::on_actionIteration_triggered()
 {
     int size = myvector.size();
+
+    if( !size)
+    {
+        QMessageBox::warning(this,"Iteration", "");
+        return;
+    }
+
     int cur = -1;
 
     Vectors vec;
@@ -455,7 +480,12 @@ void MainWindow::on_actionIteration_triggered()
         vec = myvector.at(cur);
 
         TakeIteration(vec.core, vec.min, vec.max, vec.b_min, vec.b_max, vec.h, vec.vec_x, vec.vec_y, vec.num, vec.num+1);
+#ifndef QPLOT_BETA_2
         mycurve.at(vec.curve)->clearData();
+#else
+        mycurve.at(vec.curve)->setData(QVector<double>(),QVector<double>());
+#endif
+
 
         PlotGraph(vec.curve, vec.rgb, vec.dynamic, vec.vec_x, vec.vec_y);
 
@@ -501,10 +531,12 @@ void MainWindow::on_actionCombine_triggered()
     MainWindow::on_actionClear_Grapg_triggered();
 
     QCPCurve *curve = new QCPCurve(ui->widget->xAxis, ui->widget->yAxis);
+#ifndef QPLOT_BETA_2
     ui->widget->addPlottable(curve);
+#endif
 
     mycurve.push_back(curve);
-    int rgb[3] = {200, 100, 50};
+    int rgb[3];
 
     for(int i = 0; i<3; i++)
         rgb[i] = qrand() % 255;

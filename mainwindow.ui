@@ -14,8 +14,8 @@
    <string>MainWindow</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resourse.qrc">
-    <normaloff>:/Images/185095.png</normaloff>:/Images/185095.png</iconset>
+   <iconset>
+    <normaloff>:/Images/Без имени-1.png</normaloff>:/Images/Без имени-1.png</iconset>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QCustomPlot" name="widget" native="true">
@@ -91,7 +91,7 @@
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionNew">
    <property name="icon">
-    <iconset resource="resourse.qrc">
+    <iconset>
      <normaloff>:/Images/47.png</normaloff>:/Images/47.png</iconset>
    </property>
    <property name="text">
@@ -100,7 +100,7 @@
   </action>
   <action name="actionOpen">
    <property name="icon">
-    <iconset resource="resourse.qrc">
+    <iconset>
      <normaloff>:/Images/1_folder_empty_6897.png</normaloff>:/Images/1_folder_empty_6897.png</iconset>
    </property>
    <property name="text">
@@ -109,7 +109,7 @@
   </action>
   <action name="actionSave">
    <property name="icon">
-    <iconset resource="resourse.qrc">
+    <iconset>
      <normaloff>:/Images/disk.png</normaloff>:/Images/disk.png</iconset>
    </property>
    <property name="text">
@@ -128,7 +128,7 @@
   </action>
   <action name="actionEdit">
    <property name="icon">
-    <iconset resource="resourse.qrc">
+    <iconset>
      <normaloff>:/Images/edit-redo_8942.png</normaloff>:/Images/edit-redo_8942.png</iconset>
    </property>
    <property name="text">
@@ -142,7 +142,7 @@
   </action>
   <action name="actionPreference">
    <property name="icon">
-    <iconset resource="resourse.qrc">
+    <iconset>
      <normaloff>:/Images/185095.png</normaloff>:/Images/185095.png</iconset>
    </property>
    <property name="text">
@@ -151,7 +151,7 @@
   </action>
   <action name="actionIteration">
    <property name="icon">
-    <iconset resource="resourse.qrc">
+    <iconset>
      <normaloff>:/Images/edit-redo_8942.png</normaloff>:/Images/edit-redo_8942.png</iconset>
    </property>
    <property name="text">
@@ -175,12 +175,10 @@
   <customwidget>
    <class>QCustomPlot</class>
    <extends>QWidget</extends>
-   <header>qcustomplot.h</header>
+   <header location="global">qcustomplot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="resourse.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
